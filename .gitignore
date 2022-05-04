@@ -1,9 +1,9 @@
 ### Linux ###
 *~ 
 #user experiments directory
-./models/*
-./YOLOX_outputs
-./datasets/*
+/models
+/YOLOX_outputs
+/datasets
 # do not ignore datasets under yolox/data
 !*yolox/data/datasets/
 
