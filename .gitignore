@@ -2,7 +2,7 @@
 *~ 
 #user experiments directory
 ./models/*
-./YOLOX_outputs/*
+./YOLOX_outputs
 ./datasets/*
 # do not ignore datasets under yolox/data
 !*yolox/data/datasets/
