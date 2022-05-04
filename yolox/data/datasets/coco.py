@@ -60,8 +60,11 @@ class COCODataset(Dataset):
             data_dir = os.path.join(get_yolox_datadir(), "COCO")
         self.data_dir = data_dir
         self.json_file = json_file
+        
+        # update
+#         self.coco = COCO(os.path.join(self.data_dir, "annotations", self.json_file))
+        self.coco = COCO(os.path.join(self.data_dir, self.json_file))
 
-        self.coco = COCO(os.path.join(self.data_dir, "annotations", self.json_file))
         remove_useless_info(self.coco)
         self.ids = self.coco.getImgIds()
         self.class_ids = sorted(self.coco.getCatIds())
@@ -187,8 +190,11 @@ class COCODataset(Dataset):
 
     def load_image(self, index):
         file_name = self.annotations[index][3]
-
-        img_file = os.path.join(self.data_dir, self.name, file_name)
+        
+        # update
+        data_dir_ps = '../TransPS-main/data/CUHK-SYSU/Image/SSM/'
+        img_file = os.path.join(data_dir_ps, file_name)
+#         img_file = os.path.join(self.data_dir, self.name, file_name)
 
         img = cv2.imread(img_file)
         assert img is not None, f"file named {img_file} not found"
@@ -198,7 +204,7 @@ class COCODataset(Dataset):
     def pull_item(self, index):
         id_ = self.ids[index]
 
-        res, img_info, resized_info, _ = self.annotations[index]
+        res, img_info, resized_info, t = self.annotations[index]
         if self.imgs is not None:
             pad_img = self.imgs[index]
             img = pad_img[: resized_info[0], : resized_info[1], :].copy()

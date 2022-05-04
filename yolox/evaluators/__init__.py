@@ -3,4 +3,5 @@
 # Copyright (c) Megvii, Inc. and its affiliates.
 
 from .coco_evaluator import COCOEvaluator
+from .ps_evaluator import PSEvaluator
 from .voc_evaluator import VOCEvaluator

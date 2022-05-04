@@ -103,7 +103,6 @@ class Trainer:
 
         with torch.cuda.amp.autocast(enabled=self.amp_training):
             outputs = self.model(inps, targets)
-
         loss = outputs["total_loss"]
 
         self.optimizer.zero_grad()

@@ -15,3 +15,7 @@ from .metric import *
 from .model_utils import *
 from .setup_env import *
 from .visualize import *
+
+# add
+from .iou_utils import *
+from .test_cuhk import *

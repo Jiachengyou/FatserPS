@@ -152,7 +152,6 @@ class MosaicDetection(Dataset):
             # They are also hard to be specified on a mosaic image.
             # -----------------------------------------------------------------
             return mix_img, padded_labels, img_info, img_id
-
         else:
             self._dataset._input_dim = self.input_dim
             img, label, img_info, img_id = self._dataset.pull_item(idx)
