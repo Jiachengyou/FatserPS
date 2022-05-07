@@ -79,7 +79,7 @@ class Exp(MyExp):
         
         
     def get_model(self):
-        from yolox.models import YOLOXPS, YOLOPAFPN, YOLOXHeadPS
+        from yolox.models import YOLOXPS, YOLOPAFPN, YOLOXHeadPS, YOLOXHeadPSS
         def init_yolo(M):
             for m in M.modules():
                 if isinstance(m, nn.BatchNorm2d):
@@ -89,7 +89,7 @@ class Exp(MyExp):
         if getattr(self, "model", None) is None:
             in_channels = [256, 512, 1024]
             backbone = YOLOPAFPN(self.depth, self.width, in_channels=in_channels, act=self.act)
-            head = YOLOXHeadPS(self.num_classes, self.width, in_channels=in_channels, act=self.act, reid_embedding=self.reid_embedding)
+            head = YOLOXHeadPSS(self.num_classes, self.width, in_channels=in_channels, act=self.act, reid_embedding=self.reid_embedding)
             self.model = YOLOXPS(backbone, head)
 
         self.model.apply(init_yolo)
@@ -210,10 +210,10 @@ class Exp(MyExp):
         return val_loader
     
     def get_evaluator(self, batch_size, is_distributed, testdev=False, legacy=False):
-        from yolox.evaluators import PSEvaluator
+        from yolox.evaluators import PSSEvaluator
 
         val_loader = self.get_eval_loader(batch_size, is_distributed, testdev, legacy)
-        evaluator = PSEvaluator(
+        evaluator = PSSEvaluator(
             dataloader=val_loader,
             img_size=self.test_size,
             confthre=self.test_conf,

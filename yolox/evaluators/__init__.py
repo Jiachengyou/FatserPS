@@ -4,4 +4,5 @@
 
 from .coco_evaluator import COCOEvaluator
 from .ps_evaluator import PSEvaluator
+from .ps_simple_evaluator import PSSEvaluator
 from .voc_evaluator import VOCEvaluator

@@ -79,7 +79,7 @@ def per_class_AP_table(coco_eval, class_names=COCO_CLASSES, headers=["class", "A
     return table
 
 
-class PSEvaluator:
+class PSSEvaluator:
     """
     COCO AP Evaluation class.  All the data in the val2017 dataset are processed
     and evaluated by COCO API.
@@ -183,7 +183,7 @@ class PSEvaluator:
                     inference_time += infer_end - start
 
                 outputs, reid_list = postprocess_with_reid(
-                    outputs, self.num_classes, self.confthre, self.nmsthre
+                    outputs, self.num_classes, self.confthre, self.nmsthre, w_class=False,
                 )
                 if is_time_record:
                     nms_end = time_synchronized()
@@ -239,11 +239,10 @@ class PSEvaluator:
             bboxes /= scale
 #             bboxes = xyxy2xywh(bboxes)
     
-            cls = output[:, 6]
-            scores = output[:, 4] * output[:, 5]
-            reid = output[:, 6:]
+            scores = output[:, 4]
+            reid = output[:, 5:]
             for ind in range(bboxes.shape[0]):
-                label = self.dataloader.dataset.class_ids[int(cls[ind])]
+                label = self.dataloader.dataset.class_ids[int(0)]
                 pred_data = {
                     "image_id": int(img_id),
                     "category_id": label,
@@ -273,10 +272,9 @@ class PSEvaluator:
             bboxes /= scale
             bboxes = xyxy2xywh(bboxes)
     
-            cls = output[:, 6]
-            scores = output[:, 4] * output[:, 5]
+            scores = output[:, 4]
             for ind in range(bboxes.shape[0]):
-                label = self.dataloader.dataset.class_ids[int(cls[ind])]
+                label = self.dataloader.dataset.class_ids[int(0)]
                 pred_data = {
                     "image_id": int(img_id),
                     "category_id": label,

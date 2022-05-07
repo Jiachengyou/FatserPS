@@ -19,7 +19,7 @@ from .unlabeled_matching_layer import UnlabeledMatchingLayer
 
 
 
-class YOLOXHeadPS(nn.Module):
+class YOLOXHeadPSS(nn.Module):
     def __init__(
         self,
         num_classes,
@@ -71,26 +71,26 @@ class YOLOXHeadPS(nn.Module):
                     act=act,
                 )
             )
-            self.cls_convs.append(
-                nn.Sequential(
-                    *[
-                        Conv(
-                            in_channels=int(256 * width),
-                            out_channels=int(256 * width),
-                            ksize=3,
-                            stride=1,
-                            act=act,
-                        ),
-                        Conv(
-                            in_channels=int(256 * width),
-                            out_channels=int(256 * width),
-                            ksize=3,
-                            stride=1,
-                            act=act,
-                        ),
-                    ]
-                )
-            )
+#             self.cls_convs.append(
+#                 nn.Sequential(
+#                     *[
+#                         Conv(
+#                             in_channels=int(256 * width),
+#                             out_channels=int(256 * width),
+#                             ksize=3,
+#                             stride=1,
+#                             act=act,
+#                         ),
+#                         Conv(
+#                             in_channels=int(256 * width),
+#                             out_channels=int(256 * width),
+#                             ksize=3,
+#                             stride=1,
+#                             act=act,
+#                         ),
+#                     ]
+#                 )
+#             )
             self.reg_convs.append(
                 nn.Sequential(
                     *[
@@ -111,15 +111,15 @@ class YOLOXHeadPS(nn.Module):
                     ]
                 )
             )
-            self.cls_preds.append(
-                nn.Conv2d(
-                    in_channels=int(256 * width),
-                    out_channels=self.n_anchors * self.num_classes,
-                    kernel_size=1,
-                    stride=1,
-                    padding=0,
-                )
-            )
+#             self.cls_preds.append(
+#                 nn.Conv2d(
+#                     in_channels=int(256 * width),
+#                     out_channels=self.n_anchors * self.num_classes,
+#                     kernel_size=1,
+#                     stride=1,
+#                     padding=0,
+#                 )
+#             )
             self.reg_preds.append(
                 nn.Conv2d(
                     in_channels=int(256 * width),
@@ -140,35 +140,35 @@ class YOLOXHeadPS(nn.Module):
             )
             
             # add
-            self.reid_convs.append(
-                nn.Sequential(
-                    *[
-                        Conv(
-                            in_channels=int(256 * width),
-                            out_channels=int(256 * width),
-                            ksize=3,
-                            stride=1,
-                            act=act,
-                        ),
-                        Conv(
-                            in_channels=int(256 * width),
-                            out_channels=int(256 * width),
-                            ksize=3,
-                            stride=1,
-                            act=act,
-                        ),
-                    ]
-                )
-            )
-            self.reid_preds.append(
-                nn.Conv2d(
-                    in_channels=int(256 * width),
-                    out_channels=self.n_anchors * self.reid_embedding,
-                    kernel_size=1,
-                    stride=1,
-                    padding=0,
-                )
-            )
+#             self.reid_convs.append(
+#                 nn.Sequential(
+#                     *[
+#                         Conv(
+#                             in_channels=int(256 * width),
+#                             out_channels=int(256 * width),
+#                             ksize=3,
+#                             stride=1,
+#                             act=act,
+#                         ),
+#                         Conv(
+#                             in_channels=int(256 * width),
+#                             out_channels=int(256 * width),
+#                             ksize=3,
+#                             stride=1,
+#                             act=act,
+#                         ),
+#                     ]
+#                 )
+#             )
+#             self.reid_preds.append(
+#                 nn.Conv2d(
+#                     in_channels=int(256 * width),
+#                     out_channels=self.n_anchors * self.reid_embedding,
+#                     kernel_size=1,
+#                     stride=1,
+#                     padding=0,
+#                 )
+#             )
 
         self.use_l1 = False
         self.l1_loss = nn.L1Loss(reduction="none")
@@ -196,27 +196,28 @@ class YOLOXHeadPS(nn.Module):
         expanded_strides = []
         
 
-        for k, (cls_conv, reg_conv, reid_conv, stride_this_level, x) in enumerate(
-            zip(self.cls_convs, self.reg_convs, self.reid_convs, self.strides, xin)
+        for k, (reg_conv, stride_this_level, x) in enumerate(
+            zip(self.reg_convs, self.strides, xin)
         ):
             x = self.stems[k](x)
-            cls_x = x
+#             cls_x = x
             reg_x = x
             reid_x = x
 
-            cls_feat = cls_conv(cls_x)
-            cls_output = self.cls_preds[k](cls_feat)
+#             cls_feat = cls_conv(cls_x)
+#             cls_output = self.cls_preds[k](cls_feat)
         
             reg_feat = reg_conv(reg_x)
             reg_output = self.reg_preds[k](reg_feat)
             obj_output = self.obj_preds[k](reg_feat)
             
-            reid_feat = reid_conv(reid_x)
-            reid_output = self.reid_preds[k](reid_feat)
-#             reid_output = reid_x
+#             reid_feat = reid_conv(reid_x)
+#             reid_output = self.reid_preds[k](reid_feat)
+            reid_output = reid_x
 
             if self.training:
-                output = torch.cat([reg_output, obj_output, cls_output, reid_output], 1)
+                output = torch.cat([reg_output, obj_output, reid_output], 1)
+
                 output, grid = self.get_output_and_grid(
                     output, k, stride_this_level, xin[0].type()
                 )
@@ -240,7 +241,7 @@ class YOLOXHeadPS(nn.Module):
 
             else:
                 output = torch.cat(
-                    [reg_output, obj_output.sigmoid(), cls_output.sigmoid(), reid_output], 1
+                    [reg_output, obj_output.sigmoid(), reid_output], 1
                 )
 
             outputs.append(output)
@@ -272,7 +273,7 @@ class YOLOXHeadPS(nn.Module):
         grid = self.grids[k]
 
         batch_size = output.shape[0]
-        n_ch = 5 + self.num_classes + self.reid_embedding
+        n_ch = 5 + self.reid_embedding
         hsize, wsize = output.shape[-2:]
         if grid.shape[2:4] != output.shape[2:4]:
             yv, xv = meshgrid([torch.arange(hsize), torch.arange(wsize)])
@@ -318,8 +319,8 @@ class YOLOXHeadPS(nn.Module):
     ):
         bbox_preds = outputs[:, :, :4]  # [batch, n_anchors_all, 4]
         obj_preds = outputs[:, :, 4].unsqueeze(-1)  # [batch, n_anchors_all, 1]
-        cls_preds = outputs[:, :, 5].unsqueeze(-1)  # [batch, n_anchors_all, 1]
-        reid_preds = outputs[:, :, 6:]  # [batch, n_anchors_all, reid_embedding]
+#         cls_preds = outputs[:, :, 5].unsqueeze(-1)  # [batch, n_anchors_all, 1]
+        reid_preds = outputs[:, :, 5:]  # [batch, n_anchors_all, reid_embedding]
         # calculate targets
         nlabel = (labels.sum(dim=2) > 0).sum(dim=1)  # number of objects
         total_num_anchors = outputs.shape[1]
@@ -374,7 +375,6 @@ class YOLOXHeadPS(nn.Module):
                         expanded_strides,
                         x_shifts,
                         y_shifts,
-                        cls_preds,
                         bbox_preds,
                         obj_preds,
                         labels,
@@ -407,7 +407,6 @@ class YOLOXHeadPS(nn.Module):
                         expanded_strides,
                         x_shifts,
                         y_shifts,
-                        cls_preds,
                         bbox_preds,
                         obj_preds,
                         labels,
@@ -436,7 +435,6 @@ class YOLOXHeadPS(nn.Module):
                         y_shifts=y_shifts[0][fg_mask],
                     )
 
-            cls_targets.append(cls_target)
             reg_targets.append(reg_target)
             obj_targets.append(obj_target.to(dtype))
             pid_targets.append(pid_target)
@@ -444,7 +442,6 @@ class YOLOXHeadPS(nn.Module):
             if self.use_l1:
                 l1_targets.append(l1_target)
 
-        cls_targets = torch.cat(cls_targets, 0)
         reg_targets = torch.cat(reg_targets, 0)
         obj_targets = torch.cat(obj_targets, 0)
         pid_targets = torch.cat(pid_targets, 0)      
@@ -460,11 +457,7 @@ class YOLOXHeadPS(nn.Module):
         loss_obj = (
             self.bcewithlog_loss(obj_preds.view(-1, 1), obj_targets)
         ).sum() / num_fg
-        loss_cls = (
-            self.bcewithlog_loss(
-                cls_preds.view(-1, self.num_classes)[fg_masks], cls_targets
-            )
-        ).sum() / num_fg
+
         if self.use_l1:
             loss_l1 = (
                 self.l1_loss(origin_preds.view(-1, 4)[fg_masks], l1_targets)
@@ -494,7 +487,7 @@ class YOLOXHeadPS(nn.Module):
 
         reg_weight = 5.0
         reid_weight = 1.0
-        loss = reg_weight * loss_iou + loss_obj + loss_cls + loss_l1 + reid_weight * loss_oim
+        loss = reg_weight * loss_iou + loss_obj + loss_l1 + reid_weight * loss_oim
         
         
         
@@ -503,7 +496,7 @@ class YOLOXHeadPS(nn.Module):
             loss,
             reg_weight * loss_iou,
             loss_obj,
-            loss_cls,
+            0,
             loss_l1,
             loss_oim,
             num_fg / max(num_gts, 1),
@@ -528,7 +521,6 @@ class YOLOXHeadPS(nn.Module):
         expanded_strides,
         x_shifts,
         y_shifts,
-        cls_preds,
         bbox_preds,
         obj_preds,
         labels,
@@ -555,7 +547,6 @@ class YOLOXHeadPS(nn.Module):
         )
 
         bboxes_preds_per_image = bboxes_preds_per_image[fg_mask]
-        cls_preds_ = cls_preds[batch_idx][fg_mask]
         obj_preds_ = obj_preds[batch_idx][fg_mask]
         num_in_boxes_anchor = bboxes_preds_per_image.shape[0]
 
@@ -573,22 +564,10 @@ class YOLOXHeadPS(nn.Module):
         )
         pair_wise_ious_loss = -torch.log(pair_wise_ious + 1e-8)
 
-        if mode == "cpu":
-            cls_preds_, obj_preds_ = cls_preds_.cpu(), obj_preds_.cpu()
 
-        with torch.cuda.amp.autocast(enabled=False):
-            cls_preds_ = (
-                cls_preds_.float().unsqueeze(0).repeat(num_gt, 1, 1).sigmoid_()
-                * obj_preds_.float().unsqueeze(0).repeat(num_gt, 1, 1).sigmoid_()
-            )
-            pair_wise_cls_loss = F.binary_cross_entropy(
-                cls_preds_.sqrt_(), gt_cls_per_image, reduction="none"
-            ).sum(-1)
-        del cls_preds_
 
         cost = (
-            pair_wise_cls_loss
-            + 3.0 * pair_wise_ious_loss
+            pair_wise_ious_loss
             + 100000.0 * (~is_in_boxes_and_center)
         )
 
@@ -598,7 +577,7 @@ class YOLOXHeadPS(nn.Module):
             pred_ious_this_matching,
             matched_gt_inds,
         ) = self.dynamic_k_matching(cost, pair_wise_ious, gt_classes, num_gt, fg_mask)
-        del pair_wise_cls_loss, cost, pair_wise_ious, pair_wise_ious_loss
+        del cost, pair_wise_ious, pair_wise_ious_loss
 
         if mode == "cpu":
             gt_matched_classes = gt_matched_classes.cuda()
