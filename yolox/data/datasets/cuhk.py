@@ -155,7 +155,7 @@ class CUHKDataset(Dataset):
         num_objs = len(objs)
 
 #         res = np.zeros((num_objs, 5))
-        res = np.zeros((num_objs, 6))
+        res = np.zeros((num_objs, 7))
 
 
         for ix, obj in enumerate(objs):
@@ -163,6 +163,7 @@ class CUHKDataset(Dataset):
             res[ix, 0:4] = obj["clean_bbox"]
             res[ix, 4] = cls
             res[ix, 5] = obj["person_id"]
+            res[ix, 6] = obj["id"]
 
         r = min(self.img_size[0] / height, self.img_size[1] / width)
         res[:, :4] *= r
@@ -195,7 +196,7 @@ class CUHKDataset(Dataset):
         file_name = self.annotations[index][3]
         
         # update
-        data_dir_ps = '../TransPS-main/data/CUHK-SYSU/Image/SSM/'
+        data_dir_ps = '../PSDT-main/data/CUHK-SYSU/Image/SSM/'
         img_file = os.path.join(data_dir_ps, file_name)
 #         img_file = os.path.join(self.data_dir, self.name, file_name)
 

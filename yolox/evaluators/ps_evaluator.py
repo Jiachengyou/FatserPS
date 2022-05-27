@@ -192,24 +192,31 @@ class PSEvaluator:
             data_list.extend(coco_format)
             
             coco_reid_format = self.convert_to_coco_reid_format(outputs, reid_list, info_imgs, ids)
-            save_list.extend(coco_reid_format)            
+            save_list.extend(coco_reid_format)  
+            
 #         with open("pred_data.pkl", 'wb') as fo:
 #             pickle.dump(save_list, fo)
 #         print('save over !!!')
         
         statistics = torch.cuda.FloatTensor([inference_time, nms_time, n_samples])
         if distributed:
-            data_list = gather(data_list, dst=0)
+            data_list = gather(data_list, dst=0)            
             data_list = list(itertools.chain(*data_list))
-            torch.distributed.reduce(statistics, dst=0)
-
-        eval_results = self.evaluate_prediction(data_list, statistics)
-        synchronize()        
-        try:
-            test_result_cuhk(save_list)
-        except:
-            print("error: test_result_cuhk")
-        
+            torch.distributed.reduce(statistics, dst=0)  
+            
+            save_list = gather(save_list, dst=0)            
+            save_list = list(itertools.chain(*save_list))
+            
+        eval_results = self.evaluate_prediction(data_list, statistics)       
+        synchronize() 
+        if is_main_process():
+            save_list = sorted(save_list, key=lambda x:int(x[0]['image_id']))
+            try:
+                test_result_cuhk(save_list)
+            except Exception as err:
+                print("error: test_result_cuhk")
+                print("ERROR:", err)
+        synchronize() 
         return eval_results
 
     def convert_to_coco_reid_format(self, outputs, reid_list, info_imgs, ids):
@@ -223,7 +230,7 @@ class PSEvaluator:
                     "image_id": int(img_id),
                     "bbox": [1,1,1,1],
                     "score": 0,
-                    "reid_feat": [1,1,1,1],
+                    "reid_feat": [0]*256,
                     "segmentation": [],
                 }  # COCO json format
                 image_list.append([pred_data,])

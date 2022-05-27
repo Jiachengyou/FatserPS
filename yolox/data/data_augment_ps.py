@@ -202,8 +202,9 @@ class TrainTransformPS:
         labels_t = np.expand_dims(labels_t, 1)
         classes_t = labels_t[:,:,0]
         pids_t = labels_t[:,:,1]
-        targets_t = np.hstack((classes_t, boxes_t, pids_t))
-        padded_labels = np.zeros((self.max_labels, 6))
+        seqs_t = labels_t[:,:,2]
+        targets_t = np.hstack((classes_t, boxes_t, pids_t, seqs_t))
+        padded_labels = np.zeros((self.max_labels, 7))
         padded_labels[range(len(targets_t))[: self.max_labels]] = targets_t[
             : self.max_labels
         ]

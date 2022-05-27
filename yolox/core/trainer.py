@@ -96,7 +96,9 @@ class Trainer:
 
         inps, targets = self.prefetcher.next()
         inps = inps.to(self.data_type)
-        targets = targets.to(self.data_type)
+#         print('previous', targets[:,:,-1])
+#         targets = targets.to(self.data_type)
+#         print('after', targets[:,:,-1])
         targets.requires_grad = False
         inps, targets = self.exp.preprocess(inps, targets, self.input_size)
         data_end_time = time.time()
@@ -163,6 +165,7 @@ class Trainer:
             occupy_mem(self.local_rank)
 
         if self.is_distributed:
+#             find_unused_parameters=True
             model = DDP(model, device_ids=[self.local_rank], broadcast_buffers=False)
 
         if self.use_model_ema:

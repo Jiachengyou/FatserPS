@@ -26,8 +26,8 @@ class Exp(MyExp):
 
         self.num_classes = 1
 
-        self.max_epoch = 320
-        self.no_aug_epochs = 35
+        self.max_epoch = 310
+        self.no_aug_epochs = 25
         self.warmup_epochs = 5
         
         self.data_num_workers = 4
@@ -37,7 +37,7 @@ class Exp(MyExp):
         self.seed = None
         
         # model
-        self.reid_embedding = 256
+        self.reid_embedding = 128
         
         # -----------------  testing config ------------------ #
         # output image size during evaluation/test
@@ -79,7 +79,7 @@ class Exp(MyExp):
         
         
     def get_model(self):
-        from yolox.models import YOLOXPS, YOLOPAFPN, YOLOPAFPNPS2048,YOLOPAFPNS16, YOLOXHeadPS, YOLOXHeadPSWoReidHead,YOLOXHeadPSTransformer, YOLOXHeadPS2048
+        from yolox.models import YOLOXPS, YOLOPAFPN, YOLOXHeadPS, YOLOPAFPNPS, YOLOXHeadPSWoReidHead
         def init_yolo(M):
             for m in M.modules():
                 if isinstance(m, nn.BatchNorm2d):
@@ -88,11 +88,8 @@ class Exp(MyExp):
 
         if getattr(self, "model", None) is None:
             in_channels = [256, 512, 1024]
-#             backbone = YOLOPAFPNPS2048(self.depth, self.width, in_channels=in_channels, act=self.act)            
-            backbone = YOLOPAFPNS16(self.depth, self.width, in_channels=in_channels, act=self.act)
-#             head = YOLOXHeadPS(self.num_classes, self.width, in_channels=in_channels, act=self.act, reid_embedding=self.reid_embedding)
-            head = YOLOXHeadPS(self.num_classes, self.width, in_channels=[512,], strides=[16,], act=self.act, reid_embedding=self.reid_embedding)
-#             head = YOLOXHeadPS2048(self.num_classes, self.width, in_channels=[2048,], strides=[16,], act=self.act, reid_embedding=self.reid_embedding)
+            backbone = YOLOPAFPNPS(self.depth, self.width, in_channels=in_channels, act=self.act)
+            head = YOLOXHeadPSWoReidHead(self.num_classes, self.width, in_channels=[512,], act=self.act, reid_embedding=self.reid_embedding)
             self.model = YOLOXPS(backbone, head)
 
         self.model.apply(init_yolo)

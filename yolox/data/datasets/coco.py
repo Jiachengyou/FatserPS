@@ -192,7 +192,7 @@ class COCODataset(Dataset):
         file_name = self.annotations[index][3]
         
         # update
-        data_dir_ps = '../TransPS-main/data/CUHK-SYSU/Image/SSM/'
+        data_dir_ps = '../PSDT-main/data/CUHK-SYSU/Image/SSM/'
         img_file = os.path.join(data_dir_ps, file_name)
 #         img_file = os.path.join(self.data_dir, self.name, file_name)
 

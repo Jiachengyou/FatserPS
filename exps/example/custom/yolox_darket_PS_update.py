@@ -14,8 +14,8 @@ from yolox.exp import Exp as MyExp
 class Exp(MyExp):
     def __init__(self):
         super(Exp, self).__init__()
-        self.depth = 0.33
-        self.width = 0.50
+        self.depth = 1.0
+        self.width = 1.0
         self.exp_name = os.path.split(os.path.realpath(__file__))[1].split(".")[0]
 
         # Define yourself dataset path
@@ -26,8 +26,8 @@ class Exp(MyExp):
 
         self.num_classes = 1
 
-        self.max_epoch = 320
-        self.no_aug_epochs = 35
+        self.max_epoch = 310
+        self.no_aug_epochs = 25
         self.warmup_epochs = 5
         
         self.data_num_workers = 4
@@ -79,7 +79,7 @@ class Exp(MyExp):
         
         
     def get_model(self):
-        from yolox.models import YOLOXPS, YOLOPAFPN, YOLOPAFPNPS2048,YOLOPAFPNS16, YOLOXHeadPS, YOLOXHeadPSWoReidHead,YOLOXHeadPSTransformer, YOLOXHeadPS2048
+        from yolox.models import YOLOXPS, YOLOFPN, YOLOXHeadPS, YOLOXHeadPSWoReidHead
         def init_yolo(M):
             for m in M.modules():
                 if isinstance(m, nn.BatchNorm2d):
@@ -87,12 +87,9 @@ class Exp(MyExp):
                     m.momentum = 0.03
 
         if getattr(self, "model", None) is None:
-            in_channels = [256, 512, 1024]
-#             backbone = YOLOPAFPNPS2048(self.depth, self.width, in_channels=in_channels, act=self.act)            
-            backbone = YOLOPAFPNS16(self.depth, self.width, in_channels=in_channels, act=self.act)
-#             head = YOLOXHeadPS(self.num_classes, self.width, in_channels=in_channels, act=self.act, reid_embedding=self.reid_embedding)
-            head = YOLOXHeadPS(self.num_classes, self.width, in_channels=[512,], strides=[16,], act=self.act, reid_embedding=self.reid_embedding)
-#             head = YOLOXHeadPS2048(self.num_classes, self.width, in_channels=[2048,], strides=[16,], act=self.act, reid_embedding=self.reid_embedding)
+            in_channels = [128, 256, 512]
+            backbone = YOLOFPN()
+            head = YOLOXHeadPS(self.num_classes, self.width, in_channels=in_channels, act="lrelu", reid_embedding=self.reid_embedding)
             self.model = YOLOXPS(backbone, head)
 
         self.model.apply(init_yolo)
@@ -111,11 +108,10 @@ class Exp(MyExp):
             targets[..., 2:5:2] = targets[..., 2:5:2] * scale_y
         return inputs, targets
     
-    
-
         
         
     def get_data_loader(self, batch_size, is_distributed, no_aug=False, cache_img=False):
+#         no_aug = True
         from yolox.data import (
             CUHKDataset,
             TrainTransformPS,

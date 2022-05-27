@@ -67,7 +67,7 @@ class YOLOFPN(nn.Module):
         #  backbone
         out_features = self.backbone(inputs)
         x2, x1, x0 = [out_features[f] for f in self.in_features]
-
+        
         #  yolo branch 1
         x1_in = self.out1_cbl(x0)
         x1_in = self.upsample(x1_in)

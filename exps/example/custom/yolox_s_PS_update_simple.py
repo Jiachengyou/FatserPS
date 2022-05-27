@@ -19,7 +19,7 @@ class Exp(MyExp):
         self.exp_name = os.path.split(os.path.realpath(__file__))[1].split(".")[0]
 
         # Define yourself dataset path
-        self.data_dir = "../TransPS-main/ImageSet/CUHK/"
+        self.data_dir = "../PSDT-main/ImageSet/CUHK/"
         self.train_ann = "train_pid_new.json"
         self.val_ann = "test_new.json"
 #         self.name="../../data/CUHK-SYSU/Image/SSM/"
@@ -31,7 +31,7 @@ class Exp(MyExp):
         self.warmup_epochs = 5
         
         self.data_num_workers = 4
-        self.eval_interval = 10
+        self.eval_interval = 5
         self.print_interval = 100
         self.save_history_ckpt = True
         self.seed = None
@@ -210,7 +210,7 @@ class Exp(MyExp):
         return val_loader
     
     def get_evaluator(self, batch_size, is_distributed, testdev=False, legacy=False):
-        from yolox.evaluators import PSSEvaluator
+        from yolox.evaluators import PSSEvaluator, COCOEvaluator
 
         val_loader = self.get_eval_loader(batch_size, is_distributed, testdev, legacy)
         evaluator = PSSEvaluator(

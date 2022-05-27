@@ -6,14 +6,29 @@ CHECKPOINT='YOLOX_outputs/yolox_s_PS_reid_woMosaic_maxepoch300_woreidhead/epoch_
 CHECKPOINT='YOLOX_outputs/yolox_s_PS__reid_embedding256/latest_ckpt.pth'
 CHECKPOINT='YOLOX_outputs/yolox_s_PS_test/last_mosaic_epoch_ckpt.pth'
 CHECKPOINT='YOLOX_outputs/yolox_l_PS_reid256_wMosaic_maxepoch300_tt/latest_ckpt.pth'
+CHECKPOINT='YOLOX_outputs/yolox_s_PS_reid128_wMosaic_maxepoch300_simple_detection/latest_ckpt.pth'
+CHECKPOINT='YOLOX_outputs/yolox_darket_PS_reid128_wMosaic_maxepoch300/latest_ckpt.pth'
+CHECKPOINT='YOLOX_outputs/yolox_m_PS_reid128_baseline/latest_ckpt.pth'
+CHECKPOINT='YOLOX_outputs/yolox_s_PS_reid128_baseline_fpn_update/latest_ckpt.pth'
+CHECKPOINT='YOLOX_outputs/yolox_s_PS_reid128_baseline_kd_256/epoch_310_ckpt.pth'
+# CHECKPOINT='models/yolox_s.pth'
+# CHECKPOINT='models/yolox_darknet.pth'
+# CHECKPOINT='YOLOX_outputs/yolox_s_PS_reid_wMosaic_maxepoch300_2*16/latest_ckpt.pth'
 EXP_NAME='yolox_s_PS_reid_woMosaic_eval'
 # EXP_NAME='yolox_s_PS__reid_embedding256_eval'
 EXP_NAME='yolox_s_PS_reid_woMosaic_maxepoch300_woreidhead_eval'
 EXP_NAME='yolox_s_PS_test_eval'
+EXP_NAME='yolox_s_PS_test_eval'
 # EXP_NAME='yolox_s_PS_reid_woMosaic_maxepoch100_eval'
 FILE='./exps/example/custom/yolox_s_PS_update'
-FILE='./exps/example/custom/yolox_s_PS_update_simple'
-CUDA_VISIBLE_DEVICES=0 python tools/eval.py -f $FILE -d 1 -b 16 -expn $EXP_NAME --conf 0.001 -c $CHECKPOINT --fuse
+# FILE='./exps/example/custom/yolox_s_PS_update_simple'
+FILE='./exps/example/custom/yolox_darket_PS_update'
+FILE='./exps/example/custom/yolox_m_PS_update'
+FILE='./exps/example/custom/yolox_s_PS_update_fpn'
+FILE='./exps/example/custom/yolox_s_PS_update'
+# FILE='./exps/example/custom/yolox_darket_PS'
+CUDA_VISIBLE_DEVICES=0 python tools/eval.py -f $FILE -d 1 -b 16 -expn $EXP_NAME --conf 0.2 -c $CHECKPOINT --fuse 
+# --fp16
 # -o 
 # -c $CHECKPOINT
 # python test_results.py

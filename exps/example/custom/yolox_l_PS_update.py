@@ -19,15 +19,15 @@ class Exp(MyExp):
         self.exp_name = os.path.split(os.path.realpath(__file__))[1].split(".")[0]
 
         # Define yourself dataset path
-        self.data_dir = "../TransPS-main/ImageSet/CUHK/"
+        self.data_dir = "../PSDT-main/ImageSet/CUHK/"
         self.train_ann = "train_pid_new.json"
         self.val_ann = "test_new.json"
 #         self.name="../../data/CUHK-SYSU/Image/SSM/"
 
         self.num_classes = 1
 
-        self.max_epoch = 300
-        self.no_aug_epochs = 15
+        self.max_epoch = 310
+        self.no_aug_epochs = 25
         self.warmup_epochs = 5
         
         self.data_num_workers = 4

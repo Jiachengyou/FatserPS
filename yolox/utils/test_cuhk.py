@@ -54,9 +54,13 @@ def load_image_index(root_dir, db_name):
     return train
 
 def test_result_cuhk(all_dets):
+    if isinstance(all_dets, str):
+        with open(os.path.join('./', all_dets), 'rb') as fid:
+            all_dets = pickle.load(fid)
+        
     db_name = "psdb_test"
     # change to your own path
-    root_dir = "../TransPS-main/ImageSet/CUHK/"
+    root_dir = "../PSDT-main/ImageSet/CUHK/"
 
     with open(root_dir + '/test_new.json', 'r') as fid:
         test_det = json.load(fid)

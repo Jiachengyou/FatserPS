@@ -5,17 +5,18 @@ from torch.autograd import Function
 
 class UnlabeledMatching(Function):
     @staticmethod
+    @torch.cuda.amp.custom_fwd
     def forward(ctx, features, pid_labels, queue, tail):
         # The queue/tail can't be saved with ctx.save_for_backward(), as we would
         # modify the variable which has the same memory address in backward()
         ctx.save_for_backward(features, pid_labels)
         ctx.queue = queue
         ctx.tail = tail
-        
         scores = features.mm(queue.t())
         return scores
 
     @staticmethod
+    @torch.cuda.amp.custom_bwd
     def backward(ctx, grad_output):
         features, pid_labels = ctx.saved_tensors
         queue = ctx.queue

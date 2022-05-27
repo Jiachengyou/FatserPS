@@ -5,6 +5,7 @@ from torch.autograd import Function
 
 class LabeledMatching(Function):
     @staticmethod
+    @torch.cuda.amp.custom_fwd
     def forward(ctx, features, pid_labels, lookup_table, momentum=0.5):
         # The lookup_table can't be saved with ctx.save_for_backward(), as we would
         # modify the variable which has the same memory address in backward()
@@ -17,6 +18,7 @@ class LabeledMatching(Function):
         return scores
 
     @staticmethod
+    @torch.cuda.amp.custom_bwd
     def backward(ctx, grad_output):
         features, pid_labels = ctx.saved_tensors
         lookup_table = ctx.lookup_table
@@ -28,8 +30,9 @@ class LabeledMatching(Function):
 
         # Update lookup table, but not by standard backpropagation with gradients
         for indx, label in enumerate(pid_labels):
-            if label > 5532:                
-                print('error:', label)
+#             if int(label) >= 5532:                
+#                 print('error:', label)
+#                 continue
             if label >= 0:
                 lookup_table[label] = (
                     momentum * lookup_table[label] + (1 - momentum) * features[indx]
