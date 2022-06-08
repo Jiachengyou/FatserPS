@@ -71,6 +71,8 @@ class MosaicDetection(Dataset):
         self.mosaic_prob = mosaic_prob
         self.mixup_prob = mixup_prob
         self.local_rank = get_local_rank()
+        self.pidIndex = dataset.pidIndex
+        
 
     def __len__(self):
         return len(self._dataset)

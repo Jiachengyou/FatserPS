@@ -10,7 +10,8 @@ CHECKPOINT='YOLOX_outputs/yolox_s_PS_reid128_wMosaic_maxepoch300_simple_detectio
 CHECKPOINT='YOLOX_outputs/yolox_darket_PS_reid128_wMosaic_maxepoch300/latest_ckpt.pth'
 CHECKPOINT='YOLOX_outputs/yolox_m_PS_reid128_baseline/latest_ckpt.pth'
 CHECKPOINT='YOLOX_outputs/yolox_s_PS_reid128_baseline_fpn_update/latest_ckpt.pth'
-CHECKPOINT='YOLOX_outputs/yolox_s_PS_reid128_baseline_kd_256/epoch_310_ckpt.pth'
+CHECKPOINT='YOLOX_outputs/yolox_s_PS_cuhk_oim_w2_sampler_t20/latest_ckpt.pth'
+# CHECKPOINT='YOLOX_outputs/yolox_s_PS_cuhk_class_w2_sampler_fpn512/latest_ckpt.pth'
 # CHECKPOINT='models/yolox_s.pth'
 # CHECKPOINT='models/yolox_darknet.pth'
 # CHECKPOINT='YOLOX_outputs/yolox_s_PS_reid_wMosaic_maxepoch300_2*16/latest_ckpt.pth'
@@ -23,11 +24,12 @@ EXP_NAME='yolox_s_PS_test_eval'
 FILE='./exps/example/custom/yolox_s_PS_update'
 # FILE='./exps/example/custom/yolox_s_PS_update_simple'
 FILE='./exps/example/custom/yolox_darket_PS_update'
-FILE='./exps/example/custom/yolox_m_PS_update'
-FILE='./exps/example/custom/yolox_s_PS_update_fpn'
-FILE='./exps/example/custom/yolox_s_PS_update'
+FILE='./exps/example/custom/yolox_s_PS_update_prw'
+FILE='./exps/example/custom/yolox_s_PS_update_cuhk'
+# FILE='./exps/example/custom/yolox_s_PS_update_fpn'
+# FILE='./exps/example/custom/yolox_s_PS'
 # FILE='./exps/example/custom/yolox_darket_PS'
-CUDA_VISIBLE_DEVICES=0 python tools/eval.py -f $FILE -d 1 -b 16 -expn $EXP_NAME --conf 0.2 -c $CHECKPOINT --fuse 
+CUDA_VISIBLE_DEVICES=2 python tools/eval.py -f $FILE -d 1 -b 16 -expn $EXP_NAME --conf 0.01 -c $CHECKPOINT --fuse 
 # --fp16
 # -o 
 # -c $CHECKPOINT

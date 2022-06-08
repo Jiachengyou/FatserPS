@@ -5,6 +5,8 @@
 import itertools
 from typing import Optional
 
+import numpy as np
+
 import torch
 import torch.distributed as dist
 from torch.utils.data.sampler import BatchSampler as torchBatchSampler
@@ -83,3 +85,51 @@ class InfiniteSampler(Sampler):
 
     def __len__(self):
         return self._size // self._world_size
+
+    
+class IdentityInstanceSampler(Sampler):
+    def __init__(self, pidIndex, num_instances, 
+        seed: Optional[int] = 0,
+        rank=0,
+        world_size=1,):
+        self.num_instances = num_instances
+        self.pidIndex = pidIndex
+        self.pids = list(self.pidIndex.keys())
+        
+        
+        self._seed = int(seed)
+        
+        if dist.is_available() and dist.is_initialized():
+            self._rank = dist.get_rank()
+            self._world_size = dist.get_world_size()
+        else:
+            self._rank = rank
+            self._world_size = world_size
+
+    def __len__(self):
+        return len(self.pids) * self.num_instances // self._world_size
+
+    def __iter__(self):
+        
+        start = self._rank
+        yield from itertools.islice(
+            self._indices(), start, None, self._world_size
+        )
+    
+    
+    def _indices(self): 
+        g = torch.Generator()
+        g.manual_seed(self._seed)
+        while True:           
+            indices = torch.randperm(len(self.pids), generator=g).tolist()
+            ret = []
+            for i in indices:
+                pid = self.pids[i]
+                t = self.pidIndex[pid]
+                if len(t) >= self.num_instances:
+                    t = np.random.choice(t, size=self.num_instances, replace=False)
+                else:
+                    t = np.random.choice(t, size=self.num_instances, replace=True)
+                ret.extend(t)
+            yield from ret
+            ret = []

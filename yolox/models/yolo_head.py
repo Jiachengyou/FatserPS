@@ -13,7 +13,7 @@ from yolox.utils import bboxes_iou, meshgrid
 
 from .losses import IOUloss
 from .network_blocks import BaseConv, DWConv
-
+import pickle
 
 class YOLOXHead(nn.Module):
     def __init__(
@@ -31,6 +31,14 @@ class YOLOXHead(nn.Module):
             depthwise (bool): whether apply depthwise conv in conv branch. Defalut value: False.
         """
         super().__init__()
+        
+        self.level0_list = []
+        self.level1_list = []
+        self.level2_list = []
+        
+#         self.level0_file = open("level0_list.pkl", 'wb')
+#         self.level1_file = open("level1_list.pkl", 'wb')
+#         self.level2_file = open("level2_list.pkl", 'wb')
 
         self.n_anchors = 1
         self.num_classes = num_classes
@@ -128,6 +136,19 @@ class YOLOXHead(nn.Module):
         self.iou_loss = IOUloss(reduction="none")
         self.strides = strides
         self.grids = [torch.zeros(1)] * len(in_channels)
+        
+#     def __del__(self):
+#         print(111)
+#         pickle.dump(self.level0_list, self.level0_file)
+#         self.level0_file.close()
+        
+#         pickle.dump(self.level1_list, self.level1_file)
+#         self.level1_file.close()
+        
+#         pickle.dump(self.level2_list, self.level2_file)
+#         self.level2_file.close()
+
+#         print("DELETE")
 
     def initialize_biases(self, prior_prob):
         for conv in self.cls_preds:
@@ -139,7 +160,7 @@ class YOLOXHead(nn.Module):
             b = conv.bias.view(self.n_anchors, -1)
             b.data.fill_(-math.log((1 - prior_prob) / prior_prob))
             conv.bias = torch.nn.Parameter(b.view(-1), requires_grad=True)
-
+    
     def forward(self, xin, labels=None, imgs=None):
         outputs = []
         origin_preds = []
@@ -162,6 +183,14 @@ class YOLOXHead(nn.Module):
             reg_output = self.reg_preds[k](reg_feat)
             obj_output = self.obj_preds[k](reg_feat)
             
+#             print(obj_output.sigmoid()[obj_output.sigmoid() > 0.9])
+            
+            if k == 0:                
+                self.level0_list.extend(reg_output)
+            if k == 1:
+                self.level1_list.extend(reg_output)
+            if k == 2:
+                self.level2_list.extend(reg_output)
             if self.training:
                 output = torch.cat([reg_output, obj_output, cls_output], 1)
                 output, grid = self.get_output_and_grid(

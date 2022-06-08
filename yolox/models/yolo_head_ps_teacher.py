@@ -19,7 +19,7 @@ from .unlabeled_matching_layer import UnlabeledMatchingLayer
 
 
 
-class YOLOXHeadPSTransformer(nn.Module):
+class YOLOXHeadPSTeacher(nn.Module):
     def __init__(
         self,
         num_classes,
@@ -38,9 +38,6 @@ class YOLOXHeadPSTransformer(nn.Module):
         super().__init__()
         
         self.reid_embedding = reid_embedding
-        self.reid_teacher_embedding = 2048
-        self.teacher_list = torch.load('../WSPS/teacher_feature_v0_256.pth')
-        self.teacher_list = torch.load('../WSPS/teacher_feature_v0_pooling_2048.pth')
         self.width = width
         
 
@@ -58,7 +55,6 @@ class YOLOXHeadPSTransformer(nn.Module):
         self.reid_convs = nn.ModuleList()
         self.reid_preds = nn.ModuleList()
         self.cls_preds_conv = nn.ModuleList()
-        self.reid_transformer = nn.ModuleList()
         
         num_person = 5532
         queue_size = 5000
@@ -68,6 +64,8 @@ class YOLOXHeadPSTransformer(nn.Module):
         self.stems = nn.ModuleList()
         self.stems_after = nn.ModuleList()
         Conv = DWConv if depthwise else BaseConv
+        
+        self.align = nn.ModuleList()
 
         for i in range(len(in_channels)):
             self.stems.append(
@@ -162,14 +160,14 @@ class YOLOXHeadPSTransformer(nn.Module):
                     *[
                         Conv(
                             in_channels=int(256 * width),
-                            out_channels=int(256 * width * 2),
+                            out_channels=int(256 * width),
                             ksize=3,
                             stride=1,
                             act=act,
                         ),
                         Conv(
-                            in_channels=int(256 * width * 2),
-                            out_channels=int(256 * width * 4),
+                            in_channels=int(256 * width),
+                            out_channels=int(256 * width),
                             ksize=3,
                             stride=1,
                             act=act,
@@ -207,17 +205,18 @@ class YOLOXHeadPSTransformer(nn.Module):
 #             )
             self.reid_preds.append(
                 nn.Conv2d(
-                    in_channels=int(256 * width * 4),
+                    in_channels=int(256 * width),
                     out_channels=self.n_anchors * self.reid_embedding,
                     kernel_size=1,
                     stride=1,
                     padding=0,
                 )
             )
-            self.reid_transformer.append(
+    
+            self.align.append(
                 nn.Conv2d(
-                    in_channels=int(256 * width * 4),
-                    out_channels=self.n_anchors * self.reid_teacher_embedding,
+                    in_channels=int(256 * width),
+                    out_channels=int(256 * width * 2),
                     kernel_size=1,
                     stride=1,
                     padding=0,
@@ -225,7 +224,8 @@ class YOLOXHeadPSTransformer(nn.Module):
             )
             
         
-
+        self.teacher_list = torch.load('../WSPS/teacher_feature_v0_256.pth')
+        
 
         self.use_l1 = False
         self.l1_loss = nn.L1Loss(reduction="none")
@@ -245,17 +245,19 @@ class YOLOXHeadPSTransformer(nn.Module):
             b.data.fill_(-math.log((1 - prior_prob) / prior_prob))
             conv.bias = torch.nn.Parameter(b.view(-1), requires_grad=True)
 
-    def forward(self, xin, labels=None, imgs=None):
+    def forward(self, xin, labels=None, imgs=None, reg_teacher=None):
         outputs = []
         origin_preds = []
         x_shifts = []
         y_shifts = []
         expanded_strides = []
+        s_feat_ = []
+        t_feat_ = []
         
-
         for k, (cls_conv, reg_conv, stride_this_level, x) in enumerate(
             zip(self.cls_convs, self.reg_convs, self.strides, xin)
         ):
+            
             x = self.stems[k](x)
 #             reid_output = x
 #             x = self.stems_after[k](x)
@@ -264,27 +266,26 @@ class YOLOXHeadPSTransformer(nn.Module):
 #             reid_x = x
 
             cls_feat = cls_conv(cls_x)            
-#             cls_output = self.cls_preds[k](self.cls_preds_conv[k](cls_feat))
             cls_output = self.cls_preds[k](cls_feat)
             
             reid_feat = self.reid_convs[k](cls_feat)
-            
-            reid_output_pre = self.reid_transformer[k](reid_feat)
             reid_output = self.reid_preds[k](reid_feat)
         
         
             reg_feat = reg_conv(reg_x)
             reg_output = self.reg_preds[k](reg_feat)
             obj_output = self.obj_preds[k](reg_feat)
-           
-            
-#             reid_feat = reid_conv(reid_x)
-#             reid_feat = reid_x
-#             reid_output = self.reid_preds[k](reid_feat)
-#             reid_output = reid_x
 
+            if reg_teacher != None:
+                t_feat = reg_teacher[k]
             if self.training:
-                output = torch.cat([reg_output, obj_output, cls_output, reid_output, reid_output_pre], 1)
+                # teacher
+                if reg_teacher != None:
+                    s_feat = self.align[k](reg_feat)
+                    s_feat_.append(s_feat)
+                    t_feat_.append(t_feat)                
+                
+                output = torch.cat([reg_output, obj_output, cls_output, reid_output], 1)
                 output, grid = self.get_output_and_grid(
                     output, k, stride_this_level, xin[0].type()
                 )
@@ -314,7 +315,7 @@ class YOLOXHeadPSTransformer(nn.Module):
             outputs.append(output)
 
         if self.training:
-            return self.get_losses(
+            losses, fg_masks = self.get_losses(
                 imgs,
                 x_shifts,
                 y_shifts,
@@ -323,7 +324,36 @@ class YOLOXHeadPSTransformer(nn.Module):
                 torch.cat(outputs, 1),
                 origin_preds,
                 dtype=xin[0].dtype,
-            )
+            ) 
+            reg_teacher_loss = 0
+            for index, (s_feat, t_feat) in enumerate(zip(s_feat_, t_feat_)):
+                
+                dim_ = s_feat.shape[1]
+                s_feat = s_feat.permute(0,2,3,1).reshape(-1, dim_)
+                t_feat = t_feat.permute(0,2,3,1).reshape(-1, dim_)
+                
+                s_feat = F.normalize(s_feat)
+                t_feat = F.normalize(t_feat)
+                
+#                 if index == 0:
+#                     len1 = len(s_feat)
+#                     fg_mask = fg_masks[:len1]                         
+#                 elif index == 1:
+#                     len2 = len(s_feat)
+#                     fg_mask = fg_masks[len1:len1+len2]
+#                 elif index == 2:
+#                     fg_mask = fg_masks[len1+len2:]
+
+#                 s_feat = s_feat[fg_mask]
+#                 t_feat = t_feat[fg_mask]                
+#                 print(len(t_feat))
+                mse_loss = torch.nn.MSELoss(reduction='sum')
+                if len(t_feat) == 0:
+                    continue
+                reg_teacher_loss += mse_loss(s_feat, t_feat) / len(t_feat)
+             
+            
+            return losses + (2 * reg_teacher_loss,)
         else:
             self.hw = [x.shape[-2:] for x in outputs]
 
@@ -338,9 +368,8 @@ class YOLOXHeadPSTransformer(nn.Module):
 
     def get_output_and_grid(self, output, k, stride, dtype):
         grid = self.grids[k]
-
         batch_size = output.shape[0]
-        n_ch = 5 + self.num_classes + self.reid_embedding + self.reid_teacher_embedding
+        n_ch = 5 + self.num_classes + self.reid_embedding
         hsize, wsize = output.shape[-2:]
         if grid.shape[2:4] != output.shape[2:4]:
             yv, xv = meshgrid([torch.arange(hsize), torch.arange(wsize)])
@@ -387,8 +416,7 @@ class YOLOXHeadPSTransformer(nn.Module):
         bbox_preds = outputs[:, :, :4]  # [batch, n_anchors_all, 4]
         obj_preds = outputs[:, :, 4].unsqueeze(-1)  # [batch, n_anchors_all, 1]
         cls_preds = outputs[:, :, 5].unsqueeze(-1)  # [batch, n_anchors_all, 1]
-        reid_preds = outputs[:, :, 6:6+self.reid_embedding]
-        reid_preds_pre = outputs[:, :, 6+self.reid_embedding:] # [batch, n_anchors_all, reid_embedding]
+        reid_preds = outputs[:, :, 6:]  # [batch, n_anchors_all, reid_embedding]
         # calculate targets
         nlabel = (labels.sum(dim=2) > 0).sum(dim=1)  # number of objects
         total_num_anchors = outputs.shape[1]
@@ -547,7 +575,7 @@ class YOLOXHeadPSTransformer(nn.Module):
         else:
             loss_l1 = 0.0
           
-        pos_reid = reid_preds.reshape(-1, self.reid_embedding)[fg_masks]
+        pos_reid = reid_preds.view(-1, self.reid_embedding)[fg_masks]
         pos_reid = F.normalize(pos_reid)
         pos_reid_ids = pid_targets.type(torch.LongTensor).to(pos_reid.device)        
         
@@ -570,11 +598,7 @@ class YOLOXHeadPSTransformer(nn.Module):
         # teacher
         mse_loss = torch.nn.MSELoss(reduction='sum')
         
-        # 
-        pos_reid_pre = reid_preds_pre.reshape(-1, self.reid_teacher_embedding)[fg_masks]
-        pos_reid_pre = F.normalize(pos_reid_pre)
-        
-        teacher_loss = mse_loss(pos_reid_pre, seq_targets) / len(seq_targets)
+        teacher_loss = mse_loss(pos_reid, seq_targets) / len(seq_targets)
         
         # div
 #         kl_loss = nn.KLDivLoss(reduction="batchmean")
@@ -602,7 +626,7 @@ class YOLOXHeadPSTransformer(nn.Module):
             loss_oim,
             teacher_weight * teacher_loss,
             num_fg / max(num_gts, 1),
-        )
+        ), fg_masks
 
     def get_l1_target(self, l1_target, gt, stride, x_shifts, y_shifts, eps=1e-8):
         l1_target[:, 0] = gt[:, 0] / stride - x_shifts

@@ -19,3 +19,4 @@ from .visualize import *
 # add
 from .iou_utils import *
 from .test_cuhk import *
+from .test_prw import *

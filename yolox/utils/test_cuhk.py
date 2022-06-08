@@ -193,4 +193,4 @@ if __name__ == "__main__":
 
     with open(os.path.join(results_path, 'pred_data.pkl'), 'rb') as fid:
         all_dets = pickle.load(fid)
-    test_result_ps(all_dets)
+    test_result_cuhk(all_dets)

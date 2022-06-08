@@ -43,6 +43,7 @@ class COCODataset(Dataset):
         json_file="instances_train2017.json",
         name="train2017",
         img_size=(416, 416),
+        image_dir_ps=None,
         preproc=None,
         cache=False,
     ):
@@ -73,6 +74,9 @@ class COCODataset(Dataset):
         self.imgs = None
         self.name = name
         self.img_size = img_size
+        
+        self.image_dir_ps = image_dir_ps
+        
         self.preproc = preproc
         self.annotations = self._load_coco_annotations()
         if cache:
@@ -192,8 +196,7 @@ class COCODataset(Dataset):
         file_name = self.annotations[index][3]
         
         # update
-        data_dir_ps = '../PSDT-main/data/CUHK-SYSU/Image/SSM/'
-        img_file = os.path.join(data_dir_ps, file_name)
+        img_file = os.path.join(self.image_dir_ps, file_name)
 #         img_file = os.path.join(self.data_dir, self.name, file_name)
 
         img = cv2.imread(img_file)

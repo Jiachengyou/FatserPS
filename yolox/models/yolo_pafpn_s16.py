@@ -66,6 +66,15 @@ class YOLOPAFPNS16(nn.Module):
             depthwise=depthwise,
             act=act,
         )
+        
+        self.C3_n4 = CSPLayer(
+            int(2 * in_channels[1] * width),
+            int(in_channels[1] * width),
+            round(3 * depth),
+            False,
+            depthwise=depthwise,
+            act=act,
+        )
 
 #         # bottom-up conv
 #         self.bu_conv1 = Conv(
@@ -105,8 +114,16 @@ class YOLOPAFPNS16(nn.Module):
 #         pan_out2 = self.C3_p3(f_out1)  # 512->256/8
 
         p_out1 = self.bu_conv2(x2)  # 256->512/16
-        p_out1 = torch.cat([p_out1, f_out0], 1)  # 512->1024/16
+        p_out1 = torch.cat([p_out1, x1], 1)  # 512->1024/16
         pan_out1 = self.C3_n3(p_out1)  # 1024->512/16
+        
+        pan_out1 = torch.cat([f_out0, pan_out1], 1) # 512->1024/16
+        
+        
+        pan_out1 = self.C3_n4(pan_out1)  # 1024->512/16
+        
+        
+        
 
 #         p_out0 = self.bu_conv1(pan_out1)  # 512->512/32
 #         p_out0 = torch.cat([p_out0, fpn_out0], 1)  # 512->1024/32

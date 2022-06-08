@@ -28,6 +28,7 @@ from yolox.utils import (
     time_synchronized,
     xyxy2xywh,
     test_result_cuhk,
+    test_result_prw,
 )
 
 
@@ -95,6 +96,7 @@ class PSEvaluator:
         testdev: bool = False,
         per_class_AP: bool = False,
         per_class_AR: bool = False,
+        test_dataset: str = '',
     ):
         """
         Args:
@@ -115,6 +117,7 @@ class PSEvaluator:
         self.testdev = testdev
         self.per_class_AP = per_class_AP
         self.per_class_AR = per_class_AR
+        self.test_dataset = test_dataset
 
     def evaluate(
         self,
@@ -175,6 +178,7 @@ class PSEvaluator:
                     start = time.time()
 
                 outputs = model(imgs)
+                
                 if decoder is not None:
                     outputs = decoder(outputs, dtype=outputs.type())
 
@@ -194,9 +198,7 @@ class PSEvaluator:
             coco_reid_format = self.convert_to_coco_reid_format(outputs, reid_list, info_imgs, ids)
             save_list.extend(coco_reid_format)  
             
-#         with open("pred_data.pkl", 'wb') as fo:
-#             pickle.dump(save_list, fo)
-#         print('save over !!!')
+
         
         statistics = torch.cuda.FloatTensor([inference_time, nms_time, n_samples])
         if distributed:
@@ -210,11 +212,28 @@ class PSEvaluator:
         eval_results = self.evaluate_prediction(data_list, statistics)       
         synchronize() 
         if is_main_process():
-            save_list = sorted(save_list, key=lambda x:int(x[0]['image_id']))
+            dup = set()
+            save_list_f = []
+            for x in save_list:
+                if x[0]['image_id'] not in dup:
+                    save_list_f.append(x)
+                    dup.add(x[0]['image_id'])
+                else:
+                    continue
+            save_list = sorted(save_list_f, key=lambda x:int(x[0]['image_id']))
+            
+#             with open("pred_data.pkl", 'wb') as fo:
+#                 pickle.dump(save_list, fo)
+#             print('save over !!!')
             try:
-                test_result_cuhk(save_list)
+                if self.test_dataset == 'cuhk':
+                    test_result_cuhk(save_list)
+                elif self.test_dataset == 'prw':
+                    test_result_prw(save_list)
+                else:
+                    raise('not test dataset')
             except Exception as err:
-                print("error: test_result_cuhk")
+                print("error: test_result")
                 print("ERROR:", err)
         synchronize() 
         return eval_results

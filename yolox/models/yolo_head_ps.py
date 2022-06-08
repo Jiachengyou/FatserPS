@@ -17,6 +17,8 @@ from .network_blocks import BaseConv, DWConv
 from .labeled_matching_layer import LabeledMatchingLayer
 from .unlabeled_matching_layer import UnlabeledMatchingLayer
 
+from .utils import TripletLossFilter
+
 
 
 class YOLOXHeadPS(nn.Module):
@@ -29,6 +31,7 @@ class YOLOXHeadPS(nn.Module):
         act="silu",
         depthwise=False,
         reid_embedding=128,
+        dataset='cuhk',
     ):
         """
         Args:
@@ -54,10 +57,23 @@ class YOLOXHeadPS(nn.Module):
         # add
         self.reid_convs = nn.ModuleList()
         self.reid_preds = nn.ModuleList()
+        
         self.cls_preds_conv = nn.ModuleList()
         
-        num_person = 5532
-        queue_size = 5000
+        self.dataset = dataset
+        if self.dataset == 'cuhk':
+            num_person = 5532
+            queue_size = 5000
+        else:
+            num_person = 483
+            queue_size = 500
+#         num_person = 5532
+#         queue_size = 5000
+        self.teacher_list = torch.load('../WSPS/teacher_feature_v0_256.pth')
+#         self.teacher_list = torch.load('../WSPS/teacher_feature_prw_v0_256.pth')
+#         self.reid_class = nn.Linear(self.reid_embedding, num_person)
+    
+        self.loss_tri = TripletLossFilter()
         self.labeled_matching_layer = LabeledMatchingLayer(num_persons=num_person, feat_len=self.reid_embedding)
         self.unlabeled_matching_layer = UnlabeledMatchingLayer(queue_size=queue_size, feat_len=self.reid_embedding)
         
@@ -170,49 +186,49 @@ class YOLOXHeadPS(nn.Module):
                             stride=1,
                             act=act,
                         ),
-                        nn.Conv2d(
-                            in_channels=int(256 * width),
-                            out_channels=self.n_anchors * self.reid_embedding,
-                            kernel_size=1,
-                            stride=1,
-                            padding=0,
-                        ),                        
+#                         nn.Conv2d(
+#                             in_channels=int(256 * width),
+#                             out_channels=self.n_anchors * self.reid_embedding,
+#                             kernel_size=1,
+#                             stride=1,
+#                             padding=0,
+#                         ),                        
                     ]
                 )
             )
             
-            self.cls_preds_conv.append(
-                nn.Sequential(
-                    *[
-                        Conv(
-                            in_channels=int(256 * width),
-                            out_channels=int(256 * width),
-                            ksize=3,
-                            stride=1,
-                            act=act,
-                        ),
-                        Conv(
-                            in_channels=int(256 * width),
-                            out_channels=int(256 * width),
-                            ksize=3,
-                            stride=1,
-                            act=act,
-                        ),                       
-                    ]
-                )
-            )
-#             self.reid_preds.append(
-#                 nn.Conv2d(
-#                     in_channels=int(256 * width),
-#                     out_channels=self.n_anchors * self.reid_embedding,
-#                     kernel_size=1,
-#                     stride=1,
-#                     padding=0,
+#             self.cls_preds_conv.append(
+#                 nn.Sequential(
+#                     *[
+#                         Conv(
+#                             in_channels=int(256 * width),
+#                             out_channels=int(256 * width),
+#                             ksize=3,
+#                             stride=1,
+#                             act=act,
+#                         ),
+#                         Conv(
+#                             in_channels=int(256 * width),
+#                             out_channels=int(256 * width),
+#                             ksize=3,
+#                             stride=1,
+#                             act=act,
+#                         ),                       
+#                     ]
 #                 )
 #             )
-            
-        
-        self.teacher_list = torch.load('../WSPS/teacher_feature_v0_256.pth')
+            self.reid_preds.append(
+                nn.Conv2d(
+                    in_channels=int(256 * width),
+                    out_channels=self.n_anchors * self.reid_embedding,
+                    kernel_size=1,
+                    stride=1,
+                    padding=0,
+                )
+            )
+    
+
+
 
         self.use_l1 = False
         self.l1_loss = nn.L1Loss(reduction="none")
@@ -232,13 +248,12 @@ class YOLOXHeadPS(nn.Module):
             b.data.fill_(-math.log((1 - prior_prob) / prior_prob))
             conv.bias = torch.nn.Parameter(b.view(-1), requires_grad=True)
 
-    def forward(self, xin, labels=None, imgs=None):
+    def forward(self, xin, labels=None, imgs=None, reg_teacher=None):
         outputs = []
         origin_preds = []
         x_shifts = []
         y_shifts = []
         expanded_strides = []
-        
 
         for k, (cls_conv, reg_conv, stride_this_level, x) in enumerate(
             zip(self.cls_convs, self.reg_convs, self.strides, xin)
@@ -251,8 +266,10 @@ class YOLOXHeadPS(nn.Module):
 #             reid_x = x
 
             cls_feat = cls_conv(cls_x)            
-            cls_output = self.cls_preds[k](self.cls_preds_conv[k](cls_feat))
-            reid_output = self.reid_convs[k](cls_feat)
+            cls_output = self.cls_preds[k](cls_feat)
+            
+            reid_feat = self.reid_convs[k](cls_feat)
+            reid_output = self.reid_preds[k](reid_feat)
         
         
             reg_feat = reg_conv(reg_x)
@@ -529,19 +546,38 @@ class YOLOXHeadPS(nn.Module):
             loss_l1 = 0.0
           
         pos_reid = reid_preds.view(-1, self.reid_embedding)[fg_masks]
+        
+        
+#         matching_scores = self.reid_class(pos_reid)
+
         pos_reid = F.normalize(pos_reid)
         pos_reid_ids = pid_targets.type(torch.LongTensor).to(pos_reid.device)        
         
          # reid oim loss
             
         labeled_matching_scores = self.labeled_matching_layer(pos_reid, pos_reid_ids)
-        labeled_matching_scores *= 10
+        labeled_matching_scores *= 20
         unlabeled_matching_scores = self.unlabeled_matching_layer(pos_reid, pos_reid_ids)
-        unlabeled_matching_scores *= 10
+        unlabeled_matching_scores *= 20
         matching_scores = torch.cat((labeled_matching_scores, unlabeled_matching_scores), dim=1)
         pid_labels = pos_reid_ids.clone()
         pid_labels[pid_labels == -2] = -1
-        loss_oim = F.cross_entropy(matching_scores, pid_labels, ignore_index=-1)
+        
+        p_i = F.softmax(matching_scores, dim=1)
+            #focal_p_i = 0.25 * (1 - p_i)**2 * p_i.log()
+        focal_p_i = (1 - p_i)**2 * p_i.log()
+        #focal_p_i = 2*(1 - p_i)**2 * p_i.log()
+        #focal_p_i = 0.75*(1 - p_i)**2 * p_i.log()
+        #focal_p_i = 1.25*(1 - p_i)**2 * p_i.log()
+        #focal_p_i = 0.5*(1 - p_i)**2 * p_i.log()
+
+        #loss_oim = F.nll_loss(focal_p_i, pid_labels, reduction='none', ignore_index=-1)
+        loss_oim = F.nll_loss(focal_p_i, pid_labels, ignore_index=-1)
+        
+#         loss_oim = F.cross_entropy(matching_scores, pid_labels, ignore_index=-1)
+        
+#         loss_tri = self.loss_tri(pos_reid_t, pid_labels)
+#         print(loss_tri)
         '''
         # softmax 
         matching_scores = self.classifier_reid(pos_reid).contiguous()
@@ -563,8 +599,8 @@ class YOLOXHeadPS(nn.Module):
 #         print(teacher_loss)
         
         reg_weight = 5.0
-        reid_weight = 1
-        teacher_weight = 5
+        reid_weight = 2
+        teacher_weight = 4
         loss = reg_weight * loss_iou + loss_obj + loss_cls + loss_l1 + reid_weight * loss_oim + teacher_weight * teacher_loss
         
         
@@ -576,7 +612,7 @@ class YOLOXHeadPS(nn.Module):
             loss_obj,
             loss_cls,
             loss_l1,
-            loss_oim,
+            reid_weight * loss_oim,
             teacher_weight * teacher_loss,
             num_fg / max(num_gts, 1),
         )

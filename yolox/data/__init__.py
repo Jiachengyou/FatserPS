@@ -7,4 +7,4 @@ from .data_augment_ps import TrainTransformPS, ValTransformPS
 from .data_prefetcher import DataPrefetcher
 from .dataloading import DataLoader, get_yolox_datadir, worker_init_reset_seed
 from .datasets import *
-from .samplers import InfiniteSampler, YoloBatchSampler
+from .samplers import InfiniteSampler, YoloBatchSampler, IdentityInstanceSampler

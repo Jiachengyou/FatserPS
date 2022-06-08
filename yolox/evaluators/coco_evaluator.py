@@ -11,7 +11,7 @@ import time
 from loguru import logger
 from tabulate import tabulate
 from tqdm import tqdm
-
+import pickle
 import numpy as np
 
 import torch
@@ -170,6 +170,7 @@ class COCOEvaluator:
                     start = time.time()
 
                 outputs = model(imgs)
+
                 if decoder is not None:
                     outputs = decoder(outputs, dtype=outputs.type())
 
@@ -185,6 +186,8 @@ class COCOEvaluator:
                     nms_time += nms_end - infer_end
 
             data_list.extend(self.convert_to_coco_format(outputs, info_imgs, ids))
+        
+
 
         statistics = torch.cuda.FloatTensor([inference_time, nms_time, n_samples])
         if distributed:
@@ -217,7 +220,7 @@ class COCOEvaluator:
             cls = output[:, 6]
             scores = output[:, 4] * output[:, 5]
             for ind in range(bboxes.shape[0]):
-                label = self.dataloader.dataset.class_ids[int(cls[ind])]
+                label = self.dataloader.dataset.class_ids[int(0)]
                 pred_data = {
                     "image_id": int(img_id),
                     "category_id": label,

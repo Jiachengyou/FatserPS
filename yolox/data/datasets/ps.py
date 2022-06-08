@@ -7,6 +7,7 @@ from loguru import logger
 
 import cv2
 import numpy as np
+from collections import defaultdict
 from pycocotools.coco import COCO
 
 from ..dataloading import get_yolox_datadir
@@ -32,7 +33,7 @@ def remove_useless_info(coco):
                 anno.pop("segmentation", None)
 
 
-class CUHKDataset(Dataset):
+class PSDataset(Dataset):
     """
     COCO dataset class.
     """
@@ -43,6 +44,7 @@ class CUHKDataset(Dataset):
         json_file="instances_train2017.json",
         name="train2017",
         img_size=(416, 416),
+        image_dir_ps = None,
         preproc=None,
         cache=False,
     ):
@@ -73,8 +75,24 @@ class CUHKDataset(Dataset):
         self.imgs = None
         self.name = name
         self.img_size = img_size
+        
+        #update
+        self.image_dir_ps = image_dir_ps
+        
         self.preproc = preproc
         self.annotations = self._load_coco_annotations()
+        
+        
+        # add for sampler
+        self.pidIndex = defaultdict(list)
+        for image_index, annotations in enumerate(self.annotations):
+            anns = annotations[0]
+            for ann in anns:
+                pid = int(ann[5])
+                # to be updated
+                if pid != -1:
+                    self.pidIndex[pid].append(image_index) 
+                    
         if cache:
             self._cache_images()
 
@@ -196,8 +214,7 @@ class CUHKDataset(Dataset):
         file_name = self.annotations[index][3]
         
         # update
-        data_dir_ps = '../PSDT-main/data/CUHK-SYSU/Image/SSM/'
-        img_file = os.path.join(data_dir_ps, file_name)
+        img_file = os.path.join(self.image_dir_ps, file_name)
 #         img_file = os.path.join(self.data_dir, self.name, file_name)
 
         img = cv2.imread(img_file)
